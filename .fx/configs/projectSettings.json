@@ -23,7 +23,8 @@
     "programmingLanguage": "typescript",
     "pluginSettings": {
         "fx-resource-bot": {
-            "host-type": "app-service"
+            "host-type": "app-service",
+            "capabilities": []
         }
     }
 }
