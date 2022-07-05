@@ -1,0 +1,29 @@
+{
+    "appName": "meapp",
+    "projectId": "8540f56d-c4b0-4975-913a-99f4affdfda3",
+    "version": "2.1.0",
+    "isFromSample": false,
+    "solutionSettings": {
+        "name": "fx-solution-azure",
+        "version": "1.0.0",
+        "hostType": "Azure",
+        "azureResources": [],
+        "capabilities": [
+            "MessagingExtension"
+        ],
+        "activeResourcePlugins": [
+            "fx-resource-identity",
+            "fx-resource-bot",
+            "fx-resource-local-debug",
+            "fx-resource-appstudio",
+            "fx-resource-cicd",
+            "fx-resource-api-connector"
+        ]
+    },
+    "programmingLanguage": "typescript",
+    "pluginSettings": {
+        "fx-resource-bot": {
+            "host-type": "app-service"
+        }
+    }
+}
