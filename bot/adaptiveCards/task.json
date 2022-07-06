@@ -1,0 +1,46 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.4",
+    "body": [
+        {
+            "type": "Input.Text",
+            "placeholder": "Name",
+            "id": "name",
+            "isRequired": true
+        },
+        {
+            "type": "Input.Number",
+            "placeholder": "Age",
+            "min": 0,
+            "id": "age",
+            "isRequired": true
+        },
+        {
+            "type": "Input.ChoiceSet",
+            "placeholder": "Gender",
+            "id": "gender",
+            "choices": [
+                {
+                    "title": "Sir",
+                    "value": "sir"
+                },
+                {
+                    "title": "Lady",
+                    "value": "lady"
+                }
+            ],
+            "isRequired": true
+        },
+        {
+            "type": "ActionSet",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": "Action.Submit",
+                    "id": "submitAction"
+                }
+            ]
+        }
+    ]
+}

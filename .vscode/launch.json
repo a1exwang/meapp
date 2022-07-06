@@ -48,6 +48,19 @@
             }
         },
         {
+            "name": "Launch Bot (Desktop)",
+            "type": "pwa-msedge",
+            "request": "launch",
+            "url": "https://teams.microsoft.com/l/app/${localTeamsAppId}?installAppPackage=true&${account-hint}",
+            "cascadeTerminateToConfigurations": [
+                "Attach to Bot"
+            ],
+            "presentation": {
+                "group": "all",
+                "hidden": true
+            }
+        },
+        {
             "name": "Attach to Bot",
             "type": "pwa-node",
             "request": "attach",
@@ -85,6 +98,19 @@
                 "order": 2
             },
             "stopAll": true
-        }
+        },
+        {
+            "name": "Debug (Desktop)",
+            "configurations": [
+                "Launch Bot (Desktop)",
+                "Attach to Bot"
+            ],
+            "preLaunchTask": "Pre Debug Check & Start All",
+            "presentation": {
+                "group": "all",
+                "order": 1
+            },
+            "stopAll": true
+        },
     ]
 }

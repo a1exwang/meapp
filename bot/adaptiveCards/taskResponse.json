@@ -1,0 +1,24 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.4",
+    "body": [
+        {
+            "type": "FactSet",
+            "facts": [
+                {
+                    "title": "Name",
+                    "value": "${name}"
+                },
+                {
+                    "title": "Age",
+                    "value": "${age}"
+                },
+                {
+                    "title": "Gender",
+                    "value": "${gender}"
+                }
+            ]
+        }
+    ]
+}

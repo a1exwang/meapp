@@ -6,9 +6,13 @@ import {
   TurnContext,
   AdaptiveCardInvokeValue,
   AdaptiveCardInvokeResponse,
+  MessagingExtensionAction,
+  MessagingExtensionActionResponse,
 } from "botbuilder";
 import rawWelcomeCard from "./adaptiveCards/welcome.json";
 import rawLearnCard from "./adaptiveCards/learn.json";
+import rawTaskCard from "./adaptiveCards/task.json";
+import rawTaskResponseCard from "./adaptiveCards/taskResponse.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 
 export interface DataInterface {
@@ -72,6 +76,26 @@ export class TeamsBot extends TeamsActivityHandler {
     });
   }
 
+  // Task module
+  handleTeamsMessagingExtensionFetchTask(context: TurnContext, action: MessagingExtensionAction): Promise<MessagingExtensionActionResponse> {
+    const adaptiveCard = AdaptiveCards.declareWithoutData(rawTaskCard).render();
+    const card = CardFactory.adaptiveCard(adaptiveCard);
+
+    const response: MessagingExtensionActionResponse = {
+      task: {
+        type: 'continue',
+        value: {
+          card,
+          height: 400,
+          title: `Task Module Example`,
+          width: 300
+        }
+      }
+    };
+
+    return Promise.resolve(response);
+  }
+
   // Invoked when an action is taken on an Adaptive Card. The Adaptive Card sends an event to the Bot and this
   // method handles that event.
   async onAdaptiveCardInvoke(
@@ -102,6 +126,8 @@ export class TeamsBot extends TeamsActivityHandler {
         return createCardCommand(context, action);
       case "shareMessage":
         return shareMessageCommand(context, action);
+      case "taskModule":
+        return createTaskResponse(context, action);
       default:
         throw new Error("NotImplemented");
     }
@@ -165,6 +191,19 @@ export class TeamsBot extends TeamsActivityHandler {
       composeExtension: result,
     };
     return response;
+  }
+}
+
+async function createTaskResponse(context: TurnContext, action: any): Promise<any> {
+  const adaptiveCard = AdaptiveCards.declare(rawTaskResponseCard).render(action.data);
+  const card = CardFactory.adaptiveCard(adaptiveCard);
+
+  return {
+    composeExtension: {
+      type: "result",
+      attachmentLayout: "list",
+      attachments: [card],
+    },
   }
 }
 
