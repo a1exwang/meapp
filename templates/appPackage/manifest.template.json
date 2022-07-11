@@ -1,59 +1,104 @@
 {
-    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.13/MicrosoftTeams.schema.json",
-    "manifestVersion": "1.13",
-    "version": "1.0.0",
-    "id": "{{state.fx-resource-appstudio.teamsAppId}}",
-    "packageName": "com.microsoft.teams.extension",
-    "developer": {
-        "name": "Teams App, Inc.",
-        "websiteUrl": "{{{state.fx-resource-frontend-hosting.endpoint}}}",
-        "privacyUrl": "{{{state.fx-resource-frontend-hosting.endpoint}}}{{{state.fx-resource-frontend-hosting.indexPath}}}/privacy",
-        "termsOfUseUrl": "{{{state.fx-resource-frontend-hosting.endpoint}}}{{{state.fx-resource-frontend-hosting.indexPath}}}/termsofuse"
-    },
-    "icons": {
-        "color": "resources/color.png",
-        "outline": "resources/outline.png"
-    },
-    "name": {
-        "short": "{{config.manifest.appName.short}}",
-        "full": "{{config.manifest.appName.full}}"
-    },
-    "description": {
-        "short": "Short description of {{config.manifest.appName.short}}",
-        "full": "Full description of {{config.manifest.appName.short}}"
-    },
-    "accentColor": "#FFFFFF",
-    "bots": [],
-    "composeExtensions": [
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.13/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.13",
+  "version": "1.0.0",
+  "id": "{{state.fx-resource-appstudio.teamsAppId}}",
+  "packageName": "com.microsoft.teams.extension",
+  "developer": {
+    "name": "Teams App, Inc.",
+    "websiteUrl": "{{{state.fx-resource-frontend-hosting.endpoint}}}",
+    "privacyUrl": "{{{state.fx-resource-frontend-hosting.endpoint}}}{{{state.fx-resource-frontend-hosting.indexPath}}}/privacy",
+    "termsOfUseUrl": "{{{state.fx-resource-frontend-hosting.endpoint}}}{{{state.fx-resource-frontend-hosting.indexPath}}}/termsofuse"
+  },
+  "icons": {
+    "color": "resources/color.png",
+    "outline": "resources/outline.png"
+  },
+  "name": {
+    "short": "{{config.manifest.appName.short}}",
+    "full": "{{config.manifest.appName.full}}"
+  },
+  "description": {
+    "short": "Short description of {{config.manifest.appName.short}}",
+    "full": "Full description of {{config.manifest.appName.short}}"
+  },
+  "accentColor": "#FFFFFF",
+  "bots": [
+    {
+      "botId": "{{state.fx-resource-bot.botId}}",
+      "scopes": ["personal", "team", "groupchat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
         {
-            "botId": "{{state.fx-resource-bot.botId}}",
-            "commands": [
-                {
-                    "id": "taskModule",
-                    "description": "Try task module",
-                    "title": "Task Module",
-                    "type": "action",
-                    "fetchTask": true,
-                    "context": [
-                        "compose"
-                    ],
-                    "parameters": [
-                        {
-                            "title": "title",
-                            "name": "name"
-                        }
-                    ]
-                }
-            ]
+          "scopes": ["personal", "team", "groupchat"],
+          "commands": [
+            {
+              "title": "helloWorld",
+              "description": "A helloworld command to send a welcome message"
+            }
+          ]
         }
-    ],
-    "configurableTabs": [],
-    "staticTabs": [],
-    "permissions": [
-        "identity",
-        "messageTeamMembers"
-    ],
-    "validDomains": [
-        "*.ngrok.io"
-    ]
+      ]
+    }
+  ],
+
+  "composeExtensions": [
+    {
+      "botId": "{{state.fx-resource-bot.botId}}",
+      "canUpdateConfiguration": true,
+      "commands": [
+        {
+          "id": "taskModuleCompose",
+          "description": "Task Module Compose",
+          "title": "Task Module Compose",
+          "type": "action",
+          "fetchTask": true,
+          "context": ["compose", "commandBox", "message"],
+          "parameters": [
+            {
+              "name": "unused",
+              "title": "unused"
+            }
+          ]
+        },
+        {
+          "id": "taskModuleBot",
+          "description": "Task Module Triggers Bot",
+          "title": "Task Module Triggers Bot",
+          "type": "action",
+          "fetchTask": true,
+          "context": ["compose", "commandBox", "message"],
+          "parameters": [
+            {
+              "name": "unused",
+              "title": "unused"
+            }
+          ]
+        },
+        {
+          "id": "staticParameters",
+          "description": "Static parameters",
+          "title": "Static parameters",
+          "type": "action",
+          "fetchTask": false,
+          "context": ["compose", "commandBox", "message"],
+          "parameters": [
+            {
+              "name": "title",
+              "title": "What is the title?"
+            },
+            {
+              "name": "text",
+              "title": "What is the text?"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "configurableTabs": [],
+  "staticTabs": [],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["*.ngrok.io"]
 }

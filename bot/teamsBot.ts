@@ -8,31 +8,37 @@ import {
   AdaptiveCardInvokeResponse,
   MessagingExtensionAction,
   MessagingExtensionActionResponse,
+  BotHandler,
+  Activity,
+  TeamsInfo,
+  ChannelAccount,
+  TeamsChannelAccount,
+  Attachment,
+  MessageFactory,
+  ConversationReference,
+  ConversationParameters,
 } from "botbuilder";
+import { ConnectorClient } from "botframework-connector";
 import rawWelcomeCard from "./adaptiveCards/welcome.json";
 import rawLearnCard from "./adaptiveCards/learn.json";
 import rawTaskCard from "./adaptiveCards/task.json";
 import rawTaskResponseCard from "./adaptiveCards/taskResponse.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
-
-export interface DataInterface {
-  likeCount: number;
-}
+import { AdaptiveCardHelper } from "./adaptiveCardHelper";
+import { CardResponseHelpers } from "./cardResponseHelpers";
 
 export class TeamsBot extends TeamsActivityHandler {
-  // record the likeCount
-  likeCountObj: { likeCount: number };
-
   constructor() {
     super();
 
-    this.likeCountObj = { likeCount: 0 };
-
     this.onMessage(async (context, next) => {
+      // TODO: support command bot trigger
       console.log("Running with Message Activity.");
 
       let txt = context.activity.text;
-      const removedMentionText = TurnContext.removeRecipientMention(context.activity);
+      const removedMentionText = TurnContext.removeRecipientMention(
+        context.activity
+      );
       if (removedMentionText) {
         // Remove the line break
         txt = removedMentionText.toLowerCase().replace(/\n|\r/g, "").trim();
@@ -41,22 +47,13 @@ export class TeamsBot extends TeamsActivityHandler {
       // Trigger command by IM text
       switch (txt) {
         case "welcome": {
-          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
-          await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          const card =
+            AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
+          await context.sendActivity({
+            attachments: [CardFactory.adaptiveCard(card)],
+          });
           break;
         }
-        case "learn": {
-          this.likeCountObj.likeCount = 0;
-          const card = AdaptiveCards.declare<DataInterface>(rawLearnCard).render(this.likeCountObj);
-          await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
-          break;
-        }
-        /**
-         * case "yourCommand": {
-         *   await context.sendActivity(`Add your response here!`);
-         *   break;
-         * }
-         */
       }
 
       // By calling next() you ensure that the next BotHandler is run.
@@ -67,214 +64,294 @@ export class TeamsBot extends TeamsActivityHandler {
       const membersAdded = context.activity.membersAdded;
       for (let cnt = 0; cnt < membersAdded.length; cnt++) {
         if (membersAdded[cnt].id) {
-          const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
-          await context.sendActivity({ attachments: [CardFactory.adaptiveCard(card)] });
+          const card =
+            AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
+          await context.sendActivity({
+            attachments: [CardFactory.adaptiveCard(card)],
+          });
           break;
         }
       }
       await next();
     });
+
+    this.onTurn(async (context: TurnContext, next) => {
+      // Debug log activity info
+      console.log(JSON.stringify(context.activity, null, 2));
+      await next();
+    });
   }
 
-  // Task module
-  handleTeamsMessagingExtensionFetchTask(context: TurnContext, action: MessagingExtensionAction): Promise<MessagingExtensionActionResponse> {
-    const adaptiveCard = AdaptiveCards.declareWithoutData(rawTaskCard).render();
-    const card = CardFactory.adaptiveCard(adaptiveCard);
+  // Message Extension handlers
 
-    const response: MessagingExtensionActionResponse = {
-      task: {
-        type: 'continue',
-        value: {
-          card,
-          height: 400,
-          title: `Task Module Example`,
-          width: 300
-        }
-      }
-    };
-
-    return Promise.resolve(response);
-  }
-
-  // Invoked when an action is taken on an Adaptive Card. The Adaptive Card sends an event to the Bot and this
-  // method handles that event.
-  async onAdaptiveCardInvoke(
+  // Message Extension task/fetch
+  // Called when user click message extension icon and select a command with fetchTask == true.
+  // The returned adaptive card will be rendered in the task module.
+  async handleTeamsMessagingExtensionFetchTask(
     context: TurnContext,
-    invokeValue: AdaptiveCardInvokeValue
-  ): Promise<AdaptiveCardInvokeResponse> {
-    // The verb "userlike" is sent from the Adaptive Card defined in adaptiveCards/learn.json
-    if (invokeValue.action.verb === "userlike") {
-      this.likeCountObj.likeCount++;
-      const card = AdaptiveCards.declare<DataInterface>(rawLearnCard).render(this.likeCountObj);
-      await context.updateActivity({
-        type: "message",
-        id: context.activity.replyToId,
-        attachments: [CardFactory.adaptiveCard(card)],
-      });
-      return { statusCode: 200, type: undefined, value: undefined };
+    action: MessagingExtensionAction
+  ): Promise<MessagingExtensionActionResponse> {
+    if (action.commandId === "taskModuleCompose") {
+      const adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardBasicInfo();
+      return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+    } /* if (action.commandId === "taskModuleBot") */ else {
+      // In order to use the bot to send message, the bot needs to be in the team
+      if (context.activity.conversation.conversationType === "channel") {
+        let members: TeamsChannelAccount[] = [];
+        try {
+          members = await TeamsBot.getTeamMembers(context);
+        } catch (e) {
+          // if failed, assuming the bot is not added to the team
+          const adaptiveCard = CardFactory.adaptiveCard({
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            version: "1.4",
+            type: "AdaptiveCard",
+            body: [
+              {
+                type: "TextBlock",
+                text: "Looks like you haven't used Disco in this team/chat",
+              },
+            ],
+            actions: [
+              {
+                type: "Action.Submit",
+                title: "Continue",
+                data: {
+                  msteams: {
+                    justInTimeInstall: true,
+                  },
+                },
+              },
+            ],
+          });
+          return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+        }
+        const adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardBasicInfo();
+        return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+      } else {
+        // assume personal chat
+        const adaptiveCard = AdaptiveCardHelper.createAdaptiveCardEditor();
+        return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+      }
     }
   }
 
-  // Message extension Code
-  // Action.
+
+  // Called when user click submit in task module adaptive card.
+  // The return value can be:
+  //    1. TaskInfo object with type == 'continue': multi-step task module.
+  //    2. ComposeExtension object with type == 'botMessagePreview': Task module adaptive card preview/editor
+  //    3. ComposeExtension object with type == 'result': Insert the returned adaptive card into compose area.
+  //    4. ComposeExtension object with type == 'auth': Auth
+  //    5. Empty object. Close the task module. This can be used to let the bot send adaptive card.
+  // See https://docs.microsoft.com/en-us/microsoftteams/platform/resources/messaging-extension-v3/create-extensions?tabs=typescript#responding-to-submit
   public async handleTeamsMessagingExtensionSubmitAction(
     context: TurnContext,
     action: any
   ): Promise<any> {
     switch (action.commandId) {
-      case "createCard":
-        return createCardCommand(context, action);
-      case "shareMessage":
-        return shareMessageCommand(context, action);
+      case "taskModuleCompose":
+      case "taskModuleBot":
+        const data: {cardId: string, title: string, description: string} = action.data;
+        if (data.cardId === "taskModuleComposeCardBasicInfo") {
+          let adaptiveCard: Attachment;
+          try {
+            const members = await TeamsBot.getTeamMembers(context);
+            adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardApprovers(data.title, data.description, members.map((member) => member.email));
+          } catch (e) {
+            adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardApprovers(data.title, data.description);
+          }
+          return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+        } else {
+          // Send Approver list:
+          //  For task module compose card, just return the card to insert to compose area
+          //  For bot, let bot send the card
+
+          // adaptive card ChoiceSet result is separated by ','
+          const approvers = action.data.approvers.split(",");
+
+          // Only approver and sender should refresh
+          const refreshUserIds: string[] = (await TeamsBot.getTeamMembers(context))
+            .filter(
+              (item) =>
+                approvers.indexOf(item.email) !== -1 ||
+                item.aadObjectId === context.activity.from.aadObjectId
+            )
+            .map((item) => item.id);
+
+          const adaptiveCard =
+            AdaptiveCardHelper.createTaskModuleComposeCardApproval(
+              context.activity.from.name,
+              action.data.title,
+              action.data.description,
+              approvers,
+              action.commandId === "taskModuleBot",
+              refreshUserIds,
+            );
+          if (action.commandId === "taskModuleCompose") {
+            return CardResponseHelpers.toComposeExtensionResultResponse(adaptiveCard);
+          } else {
+            await context.sendActivity({
+              attachments: [adaptiveCard],
+            });
+            return {};
+          }
+        }
+      case "staticParameters":
+        {
+          const data = action.data;
+          const heroCard = CardFactory.heroCard(data.title, data.text);
+          heroCard.content.subtitle = data.subTitle;
+          const attachment = {
+            contentType: heroCard.contentType,
+            content: heroCard.content,
+            preview: heroCard,
+          };
+          return CardResponseHelpers.toComposeExtensionResultResponse(attachment)
+        }
       case "taskModule":
-        return createTaskResponse(context, action);
+        if (action.data.id === "editor") {
+          const submittedData = action.data;
+          const adaptiveCard =
+            AdaptiveCardHelper.createAdaptiveCardAttachment(submittedData);
+          return CardResponseHelpers.toMessagingExtensionBotMessagePreviewResponse(
+            adaptiveCard
+          );
+        } else {
+        }
       default:
         throw new Error("NotImplemented");
     }
   }
 
-  // Search.
-  public async handleTeamsMessagingExtensionQuery(context: TurnContext, query: any): Promise<any> {
-    const searchQuery = query.parameters[0].value;
-    const response = await axios.get(
-      `http://registry.npmjs.com/-/v1/search?${querystring.stringify({
-        text: searchQuery,
-        size: 8,
-      })}`
+  // TODO: support preview/edit
+  async handleTeamsMessagingExtensionBotMessagePreviewEdit(context: TurnContext, action: MessagingExtensionAction): Promise<MessagingExtensionActionResponse> {
+    // The data has been returned to the bot in the action structure.
+    const submitData = AdaptiveCardHelper.toSubmitExampleData(action);
+
+    // This is a preview edit call and so this time we want to re-create the adaptive card editor.
+    const adaptiveCard = AdaptiveCardHelper.createAdaptiveCardEditor(
+      submitData.Question,
+      submitData.MultiSelect.toLowerCase() === "true",
+      submitData.Option1,
+      submitData.Option2,
+      submitData.Option3
     );
 
-    const attachments = [];
-    response.data.objects.forEach((obj) => {
-      const heroCard = CardFactory.heroCard(obj.package.name);
-      const preview = CardFactory.heroCard(obj.package.name);
-      preview.content.tap = {
-        type: "invoke",
-        value: { name: obj.package.name, description: obj.package.description },
+    return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+  }
+
+  // TODO: support preview/edit
+  async handleTeamsMessagingExtensionBotMessagePreviewSend(context: TurnContext, action: MessagingExtensionAction): Promise<MessagingExtensionActionResponse> {
+    // The data has been returned to the bot in the action structure.
+    const submitData = AdaptiveCardHelper.toSubmitExampleData(action);
+
+    // This is a send so we are done and we will create the adaptive card editor.
+    const adaptiveCard =
+      AdaptiveCardHelper.createAdaptiveCardAttachment(submitData);
+    var responseActivity: Partial<Activity> = { type: "message", attachments: [adaptiveCard] };
+    if (submitData.UserAttributionSelect === "true") {
+      responseActivity = {
+        type: "message",
+        attachments: [adaptiveCard],
+        channelData: {
+          onBehalfOf: [
+            {
+              itemId: 0,
+              mentionType: "person",
+              mri: context.activity.from.id,
+              displayName: context.activity.from.name,
+            },
+          ],
+        },
       };
-      const attachment = { ...heroCard, preview };
-      attachments.push(attachment);
-    });
+    }
+    await context.sendActivity(responseActivity);
 
-    return {
-      composeExtension: {
-        type: "result",
-        attachmentLayout: "list",
-        attachments: attachments,
-      },
-    };
+    return undefined;
   }
 
-  public async handleTeamsMessagingExtensionSelectItem(
+  async handleTeamsMessagingExtensionCardButtonClicked(
     context: TurnContext,
-    obj: any
-  ): Promise<any> {
-    return {
-      composeExtension: {
-        type: "result",
-        attachmentLayout: "list",
-        attachments: [CardFactory.heroCard(obj.name, obj.description)],
-      },
-    };
+    cardData: any
+  ): Promise<void> {
+    const members = await TeamsBot.getTeamMembers(context);
+    const data: { title: string; description: string; approvers: string[] } =
+      cardData;
+    const deeplink = TeamsBot.generateDeeplink(context);
+    for (const member of members) {
+      if (data.approvers.indexOf(member.email) !== -1) {
+        const conversationReference = await this.newConversation(context, member);
+        // do not await to prevent adaptive card timeout
+        context.adapter.continueConversation(
+          conversationReference,
+          async (personalContext: TurnContext) => {
+            console.log(`Sending to ${member.email}`);
+            const activity = MessageFactory.text(
+              `Please approve "${data.title}". Click here for details: ${deeplink}`
+            );
+            await personalContext.sendActivity(activity);
+          }
+        );
+      }
+    }
+
+    await context.sendActivity("Approvers are notified.")
   }
 
-  // Link Unfurling.
-  public async handleTeamsAppBasedLinkQuery(context: TurnContext, query: any): Promise<any> {
-    const attachment = CardFactory.thumbnailCard("Image Preview Card", query.url, [query.url]);
-
-    const result = {
-      attachmentLayout: "list",
-      type: "result",
-      attachments: [attachment],
-    };
-
-    const response = {
-      composeExtension: result,
-    };
-    return response;
-  }
-}
-
-async function createTaskResponse(context: TurnContext, action: any): Promise<any> {
-  const adaptiveCard = AdaptiveCards.declare(rawTaskResponseCard).render(action.data);
-  const card = CardFactory.adaptiveCard(adaptiveCard);
-
-  return {
-    composeExtension: {
-      type: "result",
-      attachmentLayout: "list",
-      attachments: [card],
-    },
-  }
-}
-
-async function createCardCommand(context: TurnContext, action: any): Promise<any> {
-  // The user has chosen to create a card by choosing the 'Create Card' context menu command.
-  const data = action.data;
-  const heroCard = CardFactory.heroCard(data.title, data.text);
-  heroCard.content.subtitle = data.subTitle;
-  const attachment = {
-    contentType: heroCard.contentType,
-    content: heroCard.content,
-    preview: heroCard,
-  };
-
-  return {
-    composeExtension: {
-      type: "result",
-      attachmentLayout: "list",
-      attachments: [attachment],
-    },
-  };
-}
-
-async function shareMessageCommand(context: TurnContext, action: any): Promise<any> {
-  // The user has chosen to share a message by choosing the 'Share Message' context menu command.
-  let userName = "unknown";
-  if (
-    action.messagePayload &&
-    action.messagePayload.from &&
-    action.messagePayload.from.user &&
-    action.messagePayload.from.user.displayName
-  ) {
-    userName = action.messagePayload.from.user.displayName;
+  // Bot handlers
+  // Bot adaptive card invoke
+  // TODO: support adaptive card refresh
+  async onAdaptiveCardInvoke(
+    context: TurnContext,
+    invokeValue: AdaptiveCardInvokeValue
+  ): Promise<AdaptiveCardInvokeResponse> {
+    return { statusCode: 200, type: undefined, value: undefined };
   }
 
-  // This Message Extension example allows the user to check a box to include an image with the
-  // shared message.  This demonstrates sending custom parameters along with the message payload.
-  let images = [];
-  const includeImage = action.data.includeImage;
-  if (includeImage === "true") {
-    images = [
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQtB3AwMUeNoq4gUBGe6Ocj8kyh3bXa9ZbV7u1fVKQoyKFHdkqU",
-    ];
-  }
-  const heroCard = CardFactory.heroCard(
-    `${userName} originally sent this message:`,
-    action.messagePayload.body.content,
-    images
-  );
-
-  if (
-    action.messagePayload &&
-    action.messagePayload.attachment &&
-    action.messagePayload.attachments.length > 0
-  ) {
-    // This sample does not add the MessagePayload Attachments.  This is left as an
-    // exercise for the user.
-    heroCard.content.subtitle = `(${action.messagePayload.attachments.length} Attachments not included)`;
+  // Utilities
+  private static async getTeamMembers(context: TurnContext): Promise<TeamsChannelAccount[]> {
+    const members: TeamsChannelAccount[] = [];
+    let continuationToken = undefined;
+    do {
+      var pagedMembers = await TeamsInfo.getPagedMembers(
+        context,
+        100,
+        continuationToken
+      );
+      continuationToken = pagedMembers.continuationToken;
+      members.push(...pagedMembers.members);
+    } while (continuationToken !== undefined);
+    return members;
   }
 
-  const attachment = {
-    contentType: heroCard.contentType,
-    content: heroCard.content,
-    preview: heroCard,
-  };
+  // See https://docs.microsoft.com/en-us/microsoftteams/platform/concepts/build-and-test/deep-links?tabs=teamsjs-v2#generate-deep-links-to-channel-conversation
+  private static generateDeeplink(context: TurnContext): string {
+    const parentMessageId = context.activity.replyToId;
+    const deeplink = `https://teams.microsoft.com/l/message/${context.activity.channelData.channel.id}/${parentMessageId}?tenantId=${context.activity.conversation.tenantId}&parentMessageId=${parentMessageId}`;
+    return deeplink;
+  }
 
-  return {
-    composeExtension: {
-      type: "result",
-      attachmentLayout: "list",
-      attachments: [attachment],
-    },
-  };
+  // Helper method to send notification
+  private async newConversation(context: TurnContext, user: ChannelAccount): Promise<ConversationReference> {
+    const reference = TurnContext.getConversationReference(context.activity);
+    const personalConversation = JSON.parse(JSON.stringify(reference));
+
+    const connectorClient: ConnectorClient = context.turnState.get(
+      context.adapter.ConnectorClientKey
+    );
+    const conversation = await connectorClient.conversations.createConversation(
+      {
+        isGroup: false,
+        tenantId: context.activity.conversation.tenantId,
+        bot: context.activity.recipient,
+        members: [user],
+        channelData: {},
+      } as ConversationParameters
+    );
+    personalConversation.conversation.id = conversation.id;
+
+    return personalConversation;
+  }
+
 }
