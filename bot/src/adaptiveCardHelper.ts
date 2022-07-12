@@ -125,7 +125,6 @@ export class AdaptiveCardHelper {
     title: string,
     description: string,
     approvers: string[],
-    refresh: boolean,
     userIds: string[]
   ) {
     return CardFactory.adaptiveCard({
@@ -327,14 +326,15 @@ export class AdaptiveCardHelper {
     });
   }
 
-  static createBotUserSpecificViewCardApprovalForOthers(data: {
+  static createBotUserSpecificViewCardApprovalBase(data: {
     from: string;
     title: string;
     description: string;
     approvers: string[];
+    approverComments: string[];
     userIds: string[];
   }) {
-    // tranform data
+    // transform data
     const cardData = JSON.parse(JSON.stringify(data));
     cardData["approvers"] = data.approvers.map((item, index) => {
       return { title: `${index + 1}`, value: item };
@@ -351,11 +351,13 @@ export class AdaptiveCardHelper {
           title: "Refresh",
           verb: "refresh",
           data: {
+            cardId: "approvalBase",
             from: "${from}",
             title: "${title}",
             description: "${description}",
             // TODO: how to use array literals in template
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         userIds: data.userIds,
@@ -407,6 +409,7 @@ export class AdaptiveCardHelper {
     title: string;
     description: string;
     approvers: string[];
+    approverComments: { email: string; comment: string }[];
     refresh: boolean;
     userIds: string[];
   }) {
@@ -425,10 +428,12 @@ export class AdaptiveCardHelper {
           title: "Refresh",
           verb: "refresh",
           data: {
+            cardId: "approvalForSender",
             from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         userIds: data.userIds,
@@ -439,10 +444,12 @@ export class AdaptiveCardHelper {
           verb: "update",
           title: "Update",
           data: {
-            cardId: "taskModuleComposeCardApprovalForSender",
+            cardId: "approvalForSender",
+            from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         {
@@ -450,10 +457,12 @@ export class AdaptiveCardHelper {
           verb: "cancel",
           title: "Cancel",
           data: {
-            cardId: "taskModuleComposeCardApprovalForSender",
+            cardId: "approvalForSender",
+            from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         {
@@ -461,10 +470,12 @@ export class AdaptiveCardHelper {
           verb: "refresh",
           title: "Refresh (Debug)",
           data: {
-            cardId: "taskModuleComposeCardApprovalForSender",
+            cardId: "approvalForSender",
+            from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
       ],
@@ -521,7 +532,7 @@ export class AdaptiveCardHelper {
     title: string;
     description: string;
     approvers: string[];
-    refresh: boolean;
+    approverComments: { email: string; comment: string }[];
     userIds: string[];
   }) {
     const cardData = JSON.parse(JSON.stringify(data));
@@ -539,10 +550,12 @@ export class AdaptiveCardHelper {
           title: "Refresh",
           verb: "refresh",
           data: {
+            cardId: "approvalForApprover",
             from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         userIds: data.userIds,
@@ -553,10 +566,12 @@ export class AdaptiveCardHelper {
           verb: "approve",
           title: "Approve",
           data: {
-            cardId: "taskModuleComposeCardApprovalForApprover",
+            cardId: "approvalForApprover",
+            from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         {
@@ -564,10 +579,12 @@ export class AdaptiveCardHelper {
           verb: "reject",
           title: "Reject",
           data: {
-            cardId: "taskModuleComposeCardApprovalForApprover",
+            cardId: "approvalForApprover",
+            from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
         {
@@ -575,10 +592,12 @@ export class AdaptiveCardHelper {
           verb: "refresh",
           title: "Refresh (Debug)",
           data: {
-            cardId: "taskModuleComposeCardApprovalForApprover",
+            cardId: "approvalForApprover",
+            from: "${from}",
             title: "${title}",
             description: "${description}",
             approvers: data.approvers,
+            approverComments: data.approverComments,
           },
         },
       ],
@@ -632,5 +651,173 @@ export class AdaptiveCardHelper {
     };
 
     return AdaptiveCards.declare(template).render(cardData);
+  }
+
+  static createBotUserSpecificViewCardApprovalCanceled(data: {
+    from: string;
+    title: string;
+    description: string;
+    approvers: string[];
+  }) {
+    // transform data
+    const cardData = JSON.parse(JSON.stringify(data));
+    cardData["approvers"] = data.approvers.map((item, index) => {
+      return { title: `${index + 1}`, value: item };
+    });
+
+    // render card
+    const template = {
+      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+      version: "1.4",
+      type: "AdaptiveCard",
+      body: [
+        {
+          type: "TextBlock",
+          text: "Cancelled: Approval request from ${from}",
+        },
+        {
+          type: "TextBlock",
+          text: "Title",
+        },
+        {
+          type: "TextBlock",
+          text: "${title}",
+        },
+        {
+          type: "TextBlock",
+          text: "Description",
+        },
+        {
+          type: "TextBlock",
+          text: "${description}",
+        },
+        {
+          type: "TextBlock",
+          text: "Approvers",
+        },
+        {
+          type: "FactSet",
+          facts: [
+            {
+              $data: "${approvers}",
+              title: "${title}",
+              value: "${value}",
+            },
+          ],
+        },
+      ],
+    };
+    return CardFactory.adaptiveCard(
+      AdaptiveCards.declare(template).render(cardData)
+    );
+  }
+
+  static createBotUserSpecificViewCardApprovalApproved(data: {
+    from: string;
+    title: string;
+    description: string;
+    approverComments: { email: string; comment: string }[];
+  }) {
+    // render card
+    const template = {
+      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+      version: "1.4",
+      type: "AdaptiveCard",
+      body: [
+        {
+          type: "TextBlock",
+          text: "Approved: Approval request from ${from}",
+        },
+        {
+          type: "TextBlock",
+          text: "Title",
+        },
+        {
+          type: "TextBlock",
+          text: "${title}",
+        },
+        {
+          type: "TextBlock",
+          text: "Description",
+        },
+        {
+          type: "TextBlock",
+          text: "${description}",
+        },
+        {
+          type: "TextBlock",
+          text: "Approved by",
+        },
+        {
+          type: "FactSet",
+          facts: [
+            {
+              $data: "${approverComments}",
+              title: "${email}",
+              value: "${comment}",
+            },
+          ],
+        },
+      ],
+    };
+    return CardFactory.adaptiveCard(
+      AdaptiveCards.declare(template).render(data)
+    );
+  }
+
+  static createBotUserSpecificViewCardApprovalRejected(data: {
+    from: string;
+    title: string;
+    description: string;
+    rejectedBy: string;
+    comment: string;
+  }) {
+    // render card
+    const template = {
+      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+      version: "1.4",
+      type: "AdaptiveCard",
+      body: [
+        {
+          type: "TextBlock",
+          text: "Rejected: Approval request from ${from}",
+        },
+        {
+          type: "TextBlock",
+          text: "Title",
+        },
+        {
+          type: "TextBlock",
+          text: "${title}",
+        },
+        {
+          type: "TextBlock",
+          text: "Description",
+        },
+        {
+          type: "TextBlock",
+          text: "${description}",
+        },
+        {
+          type: "TextBlock",
+          text: "Rejected by",
+        },
+        {
+          type: "TextBlock",
+          text: "${rejectedBy}",
+        },
+        {
+          type: "TextBlock",
+          text: "Comment",
+        },
+        {
+          type: "TextBlock",
+          text: "${comment}",
+        },
+      ],
+    };
+    return CardFactory.adaptiveCard(
+      AdaptiveCards.declare(template).render(data)
+    );
   }
 }
