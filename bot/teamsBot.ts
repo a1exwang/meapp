@@ -20,9 +20,6 @@ import {
 } from "botbuilder";
 import { ConnectorClient } from "botframework-connector";
 import rawWelcomeCard from "./adaptiveCards/welcome.json";
-import rawLearnCard from "./adaptiveCards/learn.json";
-import rawTaskCard from "./adaptiveCards/task.json";
-import rawTaskResponseCard from "./adaptiveCards/taskResponse.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import { AdaptiveCardHelper } from "./adaptiveCardHelper";
 import { CardResponseHelpers } from "./cardResponseHelpers";
@@ -157,7 +154,19 @@ export class TeamsBot extends TeamsActivityHandler {
           let adaptiveCard: Attachment;
           try {
             const members = await TeamsBot.getTeamMembers(context);
-            adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardApprovers(data.title, data.description, members.map((member) => member.email));
+            adaptiveCard =
+              AdaptiveCardHelper.createTaskModuleComposeCardApprovers(
+                data.title,
+                data.description,
+                members
+                  .filter(
+                    (item) =>
+                      // cannot self approve
+                      item.aadObjectId !== context.activity.from.aadObjectId
+                  )
+                  .map((member) => member.email)
+                  .sort()
+              );
           } catch (e) {
             adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardApprovers(data.title, data.description);
           }
@@ -171,22 +180,25 @@ export class TeamsBot extends TeamsActivityHandler {
           const approvers = action.data.approvers.split(",");
 
           // Only approver and sender should refresh
-          const refreshUserIds: string[] = (await TeamsBot.getTeamMembers(context))
+          const teamMembers = await TeamsBot.getTeamMembers(context);
+          const refreshUserIds: string[] = teamMembers
             .filter(
               (item) =>
                 approvers.indexOf(item.email) !== -1 ||
                 item.aadObjectId === context.activity.from.aadObjectId
             )
             .map((item) => item.id);
+          // sender must be in the team
+          const sender = teamMembers.filter((item) => item.aadObjectId === context.activity.from.aadObjectId)[0].email;
 
           const adaptiveCard =
-            AdaptiveCardHelper.createTaskModuleComposeCardApproval(
-              context.activity.from.name,
-              action.data.title,
-              action.data.description,
-              approvers,
-              action.commandId === "taskModuleBot",
-              refreshUserIds,
+            AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForOthers(
+              {
+                ...action.data,
+                approvers: approvers,
+                from: sender,
+                userIds: refreshUserIds,
+              }
             );
           if (action.commandId === "taskModuleCompose") {
             return CardResponseHelpers.toComposeExtensionResultResponse(adaptiveCard);
@@ -301,11 +313,30 @@ export class TeamsBot extends TeamsActivityHandler {
 
   // Bot handlers
   // Bot adaptive card invoke
-  // TODO: support adaptive card refresh
   async onAdaptiveCardInvoke(
     context: TurnContext,
     invokeValue: AdaptiveCardInvokeValue
   ): Promise<AdaptiveCardInvokeResponse> {
+    if (invokeValue.action.verb === "refresh") {
+      // if (invokeValue.trigger === "automatic")
+      const account = await TeamsBot.getUserInfoFromAadObjectId(context, context.activity.from.aadObjectId);
+
+      // TODO: support later steps
+      let card;
+      if (account.email === invokeValue.action.data.from) {
+        // refresh for sender 
+        // TODO: fix type
+        card = AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForSender(invokeValue.action.data as any);
+        console.log("refresh sender");
+      } else {
+        // for approver
+        card = AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForApprover(invokeValue.action.data as any);
+        console.log("refresh approver");
+      }
+      return CardResponseHelpers.toBotUserSpecificViewResponse(card);
+    } else {
+
+    }
     return { statusCode: 200, type: undefined, value: undefined };
   }
 
@@ -330,6 +361,15 @@ export class TeamsBot extends TeamsActivityHandler {
     const parentMessageId = context.activity.replyToId;
     const deeplink = `https://teams.microsoft.com/l/message/${context.activity.channelData.channel.id}/${parentMessageId}?tenantId=${context.activity.conversation.tenantId}&parentMessageId=${parentMessageId}`;
     return deeplink;
+  }
+
+  private static async getUserInfoFromAadObjectId(context: TurnContext, aadObjectId: string): Promise<TeamsChannelAccount> {
+    const members = await this.getTeamMembers(context);
+    const result = members.filter((item) => item.aadObjectId === aadObjectId);
+    if (result.length === 0) {
+      throw new Error("User not found " + aadObjectId);
+    }
+    return result[0];
   }
 
   // Helper method to send notification
