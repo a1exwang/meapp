@@ -17,6 +17,9 @@ import {
   MessageFactory,
   ConversationReference,
   ConversationParameters,
+  ConversationState,
+  UserState,
+  StatePropertyAccessor,
 } from "botbuilder";
 import rawWelcomeCard from "../adaptiveCards/welcome.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
@@ -30,9 +33,36 @@ import {
   deepClone,
 } from "./utils";
 
+
+interface WorkflowInfo {
+  workflowState: string;
+  userStates: {}
+}
+
+interface UserProfile {
+
+}
+
 export class TeamsBot extends TeamsActivityHandler {
-  constructor() {
+  private static readonly ConverstationStateWorkflowInfo = "workflowInfo";
+  private static readonly UserStateProfile = "userProfile";
+
+  private conversationState: ConversationState;
+  private userState: UserState;
+  private conversationStateAccessor: StatePropertyAccessor<WorkflowInfo>;
+  private userStateAccessor: StatePropertyAccessor<UserProfile>;
+
+  constructor(conversationState: ConversationState, userState: UserState) {
     super();
+    this.conversationState = conversationState;
+    this.userState = userState;
+    this.conversationStateAccessor =
+      conversationState.createProperty<WorkflowInfo>(
+        TeamsBot.ConverstationStateWorkflowInfo
+      );
+    this.userStateAccessor = userState.createProperty<UserState>(
+      TeamsBot.UserStateProfile
+    );
 
     this.onMessage(async (context, next) => {
       // TODO: support command bot trigger

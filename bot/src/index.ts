@@ -3,7 +3,7 @@ import * as restify from "restify";
 
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
-import { BotFrameworkAdapter, TurnContext } from "botbuilder";
+import { BotFrameworkAdapter, ConversationState, MemoryStorage, TurnContext, UserState } from "botbuilder";
 
 // This bot's main dialog.
 import { TeamsBot } from "./teamsBot";
@@ -38,8 +38,14 @@ const onTurnErrorHandler = async (context: TurnContext, error: Error) => {
 // Set the onTurnError for the singleton BotFrameworkAdapter.
 adapter.onTurnError = onTurnErrorHandler;
 
+const memoryStorage = new MemoryStorage();
+
+// Create conversation and user state with in-memory storage provider.
+const conversationState = new ConversationState(memoryStorage);
+const userState = new UserState(memoryStorage);
+
 // Create the bot that will handle incoming messages.
-const bot = new TeamsBot();
+const bot = new TeamsBot(conversationState, userState);
 
 // Create HTTP server.
 const server = restify.createServer();

@@ -42,7 +42,6 @@
       ]
     }
   ],
-
   "composeExtensions": [
     {
       "botId": "{{state.fx-resource-bot.botId}}",
