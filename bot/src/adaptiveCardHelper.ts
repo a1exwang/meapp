@@ -3,6 +3,16 @@
 
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import { CardFactory } from "botbuilder";
+import * as taskModuleComposeCardBasicInfo from "../adaptiveCards/taskModuleComposeCardBasicInfo.json";
+import * as searchCard from "../adaptiveCards/search.json";
+import * as searchResultsCard from "../adaptiveCards/searchResults.json";
+import * as searchResultCard from "../adaptiveCards/searchResult.json";
+
+export enum CardID {
+  BotSearchCard = "BotSearchCard",
+  BotSearchResultsCard = "BotSearchResultsCard",
+  BotSearchResultCard = "BotSearchResultCard",
+}
 
 export class AdaptiveCardHelper {
   static toSubmitExampleData(action) {
@@ -22,49 +32,7 @@ export class AdaptiveCardHelper {
   }
 
   static createTaskModuleComposeCardBasicInfo() {
-    return CardFactory.adaptiveCard({
-      $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
-      version: "1.4",
-      type: "AdaptiveCard",
-      actions: [
-        {
-          data: {
-            id: "submit",
-            cardId: "taskModuleComposeCardBasicInfo",
-          },
-          title: "Next",
-          type: "Action.Submit",
-        },
-      ],
-      body: [
-        {
-          type: "TextBlock",
-          text: "Step 1/2: Please enter the approval request information:",
-        },
-        {
-          type: "TextBlock",
-          text: "Title (*)",
-        },
-        {
-          id: "title",
-          type: "Input.Text",
-          isRequired: true,
-          spacing: "None",
-          placeholder: "Input your approval request title",
-        },
-        {
-          type: "TextBlock",
-          text: "Description",
-        },
-        {
-          id: "description",
-          type: "Input.Text",
-          spacing: "None",
-          placeholder: "Input your approval request description",
-          value: "",
-        },
-      ],
-    });
+    return taskModuleComposeCardBasicInfo;  
   }
 
   static createTaskModuleComposeCardApprovers(
@@ -399,9 +367,7 @@ export class AdaptiveCardHelper {
         },
       ],
     };
-    return CardFactory.adaptiveCard(
-      AdaptiveCards.declare(template).render(cardData)
-    );
+    return AdaptiveCards.declare(template).render(cardData);
   }
 
   static createBotUserSpecificViewCardApprovalForSender(data: {
@@ -707,9 +673,7 @@ export class AdaptiveCardHelper {
         },
       ],
     };
-    return CardFactory.adaptiveCard(
-      AdaptiveCards.declare(template).render(cardData)
-    );
+    return AdaptiveCards.declare(template).render(cardData);
   }
 
   static createBotUserSpecificViewCardApprovalApproved(data: {
@@ -760,9 +724,7 @@ export class AdaptiveCardHelper {
         },
       ],
     };
-    return CardFactory.adaptiveCard(
-      AdaptiveCards.declare(template).render(data)
-    );
+    return AdaptiveCards.declare(template).render(data);
   }
 
   static createBotUserSpecificViewCardApprovalRejected(data: {
@@ -816,8 +778,27 @@ export class AdaptiveCardHelper {
         },
       ],
     };
-    return CardFactory.adaptiveCard(
-      AdaptiveCards.declare(template).render(data)
-    );
+    return AdaptiveCards.declare(template).render(data);
+  }
+
+  static createBotSearchCard(data: {manufacturers: {name: string}[]}) {
+    return AdaptiveCards.declare(searchCard).render({
+      ...data,
+      cardId: CardID.BotSearchCard,
+    });
+  }
+
+  static createBotSearchResultsCard(data: {results: {id: string, name: string, description: string}[]}) {
+    return AdaptiveCards.declare(searchResultsCard).render({
+      ...data,
+      cardId: CardID.BotSearchResultsCard,
+    });
+  }
+
+  static createBotSearchResultCard(data: {id: string, name: string, description: string}) {
+    return AdaptiveCards.declare(searchResultCard).render({
+      ...data,
+      cardId: CardID.BotSearchResultCard,
+    });
   }
 }

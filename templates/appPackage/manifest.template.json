@@ -34,8 +34,17 @@
           "scopes": ["personal", "team", "groupchat"],
           "commands": [
             {
-              "title": "helloWorld",
-              "description": "A helloworld command to send a welcome message"
+              "title": "welcome",
+              "description": "Welcome"
+            }
+          ]
+        },
+        {
+          "scopes": ["personal", "team", "groupchat"],
+          "commands": [
+            {
+              "title": "find parts",
+              "description": "Find Parts"
             }
           ]
         }

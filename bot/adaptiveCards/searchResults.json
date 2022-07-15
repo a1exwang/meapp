@@ -1,0 +1,55 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Search Results"
+    },
+    {
+      "type": "Container",
+      "items": [
+        {
+          "$data": "${results}",
+          "type": "Container",
+          "selectAction": {
+            "type": "Action.Execute",
+            "verb": "selectResult",
+            "tooltip": "See ${name} details",
+            "data": {
+              "cardId": "${$root.cardId}",
+              "id": "${id}"
+            }
+          },
+          "items": [
+            {
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "weight": "Bolder",
+                      "text": "${name}",
+                      "wrap": true
+                    },
+                    {
+                      "type": "TextBlock",
+                      "spacing": "None",
+                      "text": "${description}",
+                      "isSubtle": true,
+                      "wrap": true
+                    }
+                  ],
+                  "width": "stretch"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

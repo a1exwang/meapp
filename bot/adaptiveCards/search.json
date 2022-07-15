@@ -1,0 +1,99 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "TextBlock",
+      "size": "Medium",
+      "weight": "Bolder",
+      "text": "Query Parts",
+      "horizontalAlignment": "Center",
+      "wrap": true,
+      "style": "heading"
+    },
+    {
+      "type": "Input.Text",
+      "label": "Name",
+      "id": "name",
+      "isRequired": true,
+      "errorMessage": "Name is required"
+    },
+    {
+      "type": "ActionSet",
+      "actions": [
+        {
+          "type": "Action.ShowCard",
+          "title": "Advanced Search",
+          "card": {
+            "type": "AdaptiveCard",
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.4",
+            "body": [
+              {
+                "type": "Input.Number",
+                "label": "Serial No.",
+                "id": "serialNum"
+              },
+              {
+                "type": "Input.Date",
+                "label": "Purchase Date",
+                "id": "purchaseDate",
+                "value": "2022-07-01"
+              },
+              {
+                "type": "Input.ChoiceSet",
+                "id": "manufacturer",
+                "label": "Manufacturer",
+                "style": "compact",
+                "choices": [
+                  {
+                    "$data": "${manufacturers}",
+                    "title": "${name}",
+                    "value": "${name}"
+                  }
+                ]
+              },
+              {
+                "type": "Input.Toggle",
+                "id": "myDepartment",
+                "title": "Owned by my department"
+              },
+              {
+                "type": "Input.ChoiceSet",
+                "choices": [],
+                "label": "Owners",
+                "choices.data": {
+                  "type": "Data.Query",
+                  "dataset": "graph.microsoft.com/users"
+                },
+                "id": "owners",
+                "isMultiSelect": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "verb": "search",
+      "title": "Search (conversational)",
+      "data": {
+        "searchResult": "reply",
+        "cardId": "${cardId}"
+      }
+    },
+    {
+      "type": "Action.Execute",
+      "verb": "search",
+      "title": "Search (refresh)",
+      "data": {
+        "searchResult": "refresh",
+        "cardId": "${cardId}"
+      }
+    }
+  ]
+}

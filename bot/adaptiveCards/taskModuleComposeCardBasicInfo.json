@@ -1,0 +1,43 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "actions": [
+    {
+      "data": {
+        "id": "submit",
+        "cardId": "taskModuleComposeCardBasicInfo"
+      },
+      "title": "Next",
+      "type": "Action.Submit"
+    }
+  ],
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Step 1/2: Please enter the approval request information:"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Title (*)"
+    },
+    {
+      "id": "title",
+      "type": "Input.Text",
+      "isRequired": true,
+      "spacing": "None",
+      "placeholder": "Input your approval request title"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Description"
+    },
+    {
+      "id": "description",
+      "type": "Input.Text",
+      "spacing": "None",
+      "placeholder": "Input your approval request description",
+      "value": ""
+    }
+  ]
+}

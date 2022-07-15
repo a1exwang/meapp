@@ -48,11 +48,19 @@ export class CardResponseHelpers {
   }
 
   // https://docs.microsoft.com/en-us/adaptive-cards/authoring-cards/universal-action-model#response-format
-  static toBotInvokeResponse(card: Record<string, unknown>): AdaptiveCardInvokeResponse {
+  static toBotInvokeRefreshResponse(card: Record<string, unknown>): AdaptiveCardInvokeResponse {
     return {
       statusCode: 200,
       type: "application/vnd.microsoft.card.adaptive",
       value: card,
+    };
+  }
+
+  static toBotInvokeMessageResponse(message: string): AdaptiveCardInvokeResponse {
+    return {
+      statusCode: 200,
+      type: "application/vnd.microsoft.activity.message",
+      value: message as any,
     };
   }
 }

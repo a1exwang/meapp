@@ -1,5 +1,3 @@
-import { default as axios } from "axios";
-import * as querystring from "querystring";
 import {
   TeamsActivityHandler,
   CardFactory,
@@ -8,22 +6,17 @@ import {
   AdaptiveCardInvokeResponse,
   MessagingExtensionAction,
   MessagingExtensionActionResponse,
-  BotHandler,
   Activity,
-  TeamsInfo,
-  ChannelAccount,
   TeamsChannelAccount,
   Attachment,
   MessageFactory,
-  ConversationReference,
-  ConversationParameters,
   ConversationState,
   UserState,
   StatePropertyAccessor,
 } from "botbuilder";
 import rawWelcomeCard from "../adaptiveCards/welcome.json";
 import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
-import { AdaptiveCardHelper } from "./adaptiveCardHelper";
+import { AdaptiveCardHelper, CardID } from "./adaptiveCardHelper";
 import { CardResponseHelpers } from "./cardResponseHelpers";
 import {
   getTeamMembers,
@@ -33,15 +26,12 @@ import {
   deepClone,
 } from "./utils";
 
-
 interface WorkflowInfo {
   workflowState: string;
-  userStates: {}
+  userStates: {};
 }
 
-interface UserProfile {
-
-}
+interface UserProfile {}
 
 export class TeamsBot extends TeamsActivityHandler {
   private static readonly ConverstationStateWorkflowInfo = "workflowInfo";
@@ -77,16 +67,28 @@ export class TeamsBot extends TeamsActivityHandler {
         txt = removedMentionText.toLowerCase().replace(/\n|\r/g, "").trim();
       }
 
-      // Trigger command by IM text
-      switch (txt) {
-        case "welcome": {
-          const card =
-            AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
-          await context.sendActivity({
-            attachments: [CardFactory.adaptiveCard(card)],
-          });
-          break;
-        }
+      if (txt === "welcome") {
+        const card = AdaptiveCards.declareWithoutData(rawWelcomeCard).render();
+        await context.sendActivity({
+          attachments: [CardFactory.adaptiveCard(card)],
+        });
+      } else if (txt.match(/find\s+part/i)) {
+        // Developers can query custom data to get search options.
+        const manufacturers = [
+          { name: "Bosch" },
+          { name: "Microsoft" },
+          { name: "Others" },
+        ];
+
+        await context.sendActivity({
+          attachments: [
+            CardFactory.adaptiveCard(
+              AdaptiveCardHelper.createBotSearchCard({
+                manufacturers,
+              })
+            ),
+          ],
+        });
       }
 
       // By calling next() you ensure that the next BotHandler is run.
@@ -125,8 +127,9 @@ export class TeamsBot extends TeamsActivityHandler {
     action: MessagingExtensionAction
   ): Promise<MessagingExtensionActionResponse> {
     if (action.commandId === "taskModuleCompose") {
-      const adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardBasicInfo();
-      return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+      const adaptiveCard =
+        AdaptiveCardHelper.createTaskModuleComposeCardBasicInfo();
+      return CardResponseHelpers.toTaskModuleResponse(CardFactory.adaptiveCard(adaptiveCard));
     } /* if (action.commandId === "taskModuleBot") */ else {
       // In order to use the bot to send message, the bot needs to be in the team
       if (context.activity.conversation.conversationType === "channel") {
@@ -159,8 +162,9 @@ export class TeamsBot extends TeamsActivityHandler {
           });
           return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
         }
-        const adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardBasicInfo();
-        return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
+        const adaptiveCard =
+          AdaptiveCardHelper.createTaskModuleComposeCardBasicInfo();
+        return CardResponseHelpers.toTaskModuleResponse(CardFactory.adaptiveCard(adaptiveCard));
       } else {
         // assume personal chat
         const adaptiveCard = AdaptiveCardHelper.createAdaptiveCardEditor();
@@ -168,7 +172,6 @@ export class TeamsBot extends TeamsActivityHandler {
       }
     }
   }
-
 
   // Called when user click submit in task module adaptive card.
   // The return value can be:
@@ -185,7 +188,8 @@ export class TeamsBot extends TeamsActivityHandler {
     switch (action.commandId) {
       case "taskModuleCompose":
       case "taskModuleBot":
-        const data: {cardId: string, title: string, description: string} = action.data;
+        const data: { cardId: string; title: string; description: string } =
+          action.data;
         if (data.cardId === "taskModuleComposeCardBasicInfo") {
           let adaptiveCard: Attachment;
           try {
@@ -204,7 +208,11 @@ export class TeamsBot extends TeamsActivityHandler {
                   .sort()
               );
           } catch (e) {
-            adaptiveCard = AdaptiveCardHelper.createTaskModuleComposeCardApprovers(data.title, data.description);
+            adaptiveCard =
+              AdaptiveCardHelper.createTaskModuleComposeCardApprovers(
+                data.title,
+                data.description
+              );
           }
           return CardResponseHelpers.toTaskModuleResponse(adaptiveCard);
         } else {
@@ -225,39 +233,40 @@ export class TeamsBot extends TeamsActivityHandler {
             )
             .map((item) => item.id);
           // sender must be in the team
-          const sender = teamMembers.filter((item) => item.aadObjectId === context.activity.from.aadObjectId)[0].email;
+          const sender = teamMembers.filter(
+            (item) => item.aadObjectId === context.activity.from.aadObjectId
+          )[0].email;
 
-          const adaptiveCard =
-            AdaptiveCardHelper.createBotUserSpecificViewCardApprovalBase(
-              {
-                ...action.data,
-                approvers: approvers,
-                approverComments: [],
-                from: sender,
-                userIds: refreshUserIds,
-              }
-            );
+          const card =
+            AdaptiveCardHelper.createBotUserSpecificViewCardApprovalBase({
+              ...action.data,
+              approvers: approvers,
+              approverComments: [],
+              from: sender,
+              userIds: refreshUserIds,
+            });
           if (action.commandId === "taskModuleCompose") {
-            return CardResponseHelpers.toComposeExtensionResultResponse(adaptiveCard);
+            return CardResponseHelpers.toComposeExtensionResultResponse(
+              CardFactory.adaptiveCard(card)
+            );
           } else {
             await context.sendActivity({
-              attachments: [adaptiveCard],
+              attachments: [CardFactory.adaptiveCard(card)],
             });
             return {};
           }
         }
-      case "staticParameters":
-        {
-          const data = action.data;
-          const heroCard = CardFactory.heroCard(data.title, data.text);
-          heroCard.content.subtitle = data.subTitle;
-          const attachment = {
-            contentType: heroCard.contentType,
-            content: heroCard.content,
-            preview: heroCard,
-          };
-          return CardResponseHelpers.toComposeExtensionResultResponse(attachment)
-        }
+      case "staticParameters": {
+        const data = action.data;
+        const heroCard = CardFactory.heroCard(data.title, data.text);
+        heroCard.content.subtitle = data.subTitle;
+        const attachment = {
+          contentType: heroCard.contentType,
+          content: heroCard.content,
+          preview: heroCard,
+        };
+        return CardResponseHelpers.toComposeExtensionResultResponse(attachment);
+      }
       case "taskModule":
         if (action.data.id === "editor") {
           const submittedData = action.data;
@@ -274,7 +283,10 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   // TODO: support preview/edit
-  async handleTeamsMessagingExtensionBotMessagePreviewEdit(context: TurnContext, action: MessagingExtensionAction): Promise<MessagingExtensionActionResponse> {
+  async handleTeamsMessagingExtensionBotMessagePreviewEdit(
+    context: TurnContext,
+    action: MessagingExtensionAction
+  ): Promise<MessagingExtensionActionResponse> {
     // The data has been returned to the bot in the action structure.
     const submitData = AdaptiveCardHelper.toSubmitExampleData(action);
 
@@ -291,14 +303,20 @@ export class TeamsBot extends TeamsActivityHandler {
   }
 
   // TODO: support preview/edit
-  async handleTeamsMessagingExtensionBotMessagePreviewSend(context: TurnContext, action: MessagingExtensionAction): Promise<MessagingExtensionActionResponse> {
+  async handleTeamsMessagingExtensionBotMessagePreviewSend(
+    context: TurnContext,
+    action: MessagingExtensionAction
+  ): Promise<MessagingExtensionActionResponse> {
     // The data has been returned to the bot in the action structure.
     const submitData = AdaptiveCardHelper.toSubmitExampleData(action);
 
     // This is a send so we are done and we will create the adaptive card editor.
     const adaptiveCard =
       AdaptiveCardHelper.createAdaptiveCardAttachment(submitData);
-    var responseActivity: Partial<Activity> = { type: "message", attachments: [adaptiveCard] };
+    var responseActivity: Partial<Activity> = {
+      type: "message",
+      attachments: [adaptiveCard],
+    };
     if (submitData.UserAttributionSelect === "true") {
       responseActivity = {
         type: "message",
@@ -345,7 +363,7 @@ export class TeamsBot extends TeamsActivityHandler {
       }
     }
 
-    await context.sendActivity("Approvers are notified.")
+    await context.sendActivity("Approvers are notified.");
   }
 
   // Bot handlers
@@ -384,47 +402,43 @@ export class TeamsBot extends TeamsActivityHandler {
               invokeValue.action.data as any
             );
         }
-        return CardResponseHelpers.toBotInvokeResponse(card);
+        return CardResponseHelpers.toBotInvokeRefreshResponse(card);
       } else {
         throw new Error("Base card cannot have action other than refresh");
       }
     } else if (cardId === "approvalForSender") {
       if (verb === "update") {
         const adaptiveCard =
-          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalBase(invokeValue.action.data as any);
-        const cardAttachment = MessageFactory.attachment(adaptiveCard);
-        cardAttachment.id = context.activity.replyToId;
-        // See https://docs.microsoft.com/en-us/microsoftteams/platform/bots/how-to/update-and-delete-bot-messages?tabs=typescript#update-cards
-        await context.updateActivity(cardAttachment);
-        // NOTE: also need to return the exact card otherwise refresh will fail
-        return CardResponseHelpers.toBotInvokeResponse(cardAttachment);
+          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalBase(
+            invokeValue.action.data as any
+          );
+        return await this.refreshAllCards(context, adaptiveCard);
       } else if (verb === "cancel") {
         const teamMembers = await getTeamMembers(context);
-        const sender = teamMembers.filter((item) => item.aadObjectId === context.activity.from.aadObjectId)[0].email;
+        const sender = teamMembers.filter(
+          (item) => item.aadObjectId === context.activity.from.aadObjectId
+        )[0].email;
         const adaptiveCard =
-          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalCanceled(
-            {
-              ...invokeValue.action.data,
-              from: sender,
-            } as any
-          );
-        const cardAttachment = MessageFactory.attachment(adaptiveCard);
-        cardAttachment.id = context.activity.replyToId;
-        // See https://docs.microsoft.com/en-us/microsoftteams/platform/bots/how-to/update-and-delete-bot-messages?tabs=typescript#update-cards
-        await context.updateActivity(cardAttachment);
-        // NOTE: also need to return the exact card otherwise refresh will fail
-        return CardResponseHelpers.toBotInvokeResponse(cardAttachment);
+          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalCanceled({
+            ...invokeValue.action.data,
+            from: sender,
+          } as any);
+          return await this.refreshAllCards(context, adaptiveCard);
       } else if (verb === "refresh") {
         const adaptiveCard =
-          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForSender(invokeValue.action.data as any);
-        return CardResponseHelpers.toBotInvokeResponse(adaptiveCard);
+          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForSender(
+            invokeValue.action.data as any
+          );
+        return CardResponseHelpers.toBotInvokeRefreshResponse(adaptiveCard);
       } else {
         throw new Error("Sender card: Unknown verb " + verb);
       }
     } else if (cardId === "approvalForApprover") {
       if (verb === "approve") {
         const teamMembers = await getTeamMembers(context);
-        const sender = teamMembers.filter((item) => item.aadObjectId === context.activity.from.aadObjectId)[0].email;
+        const sender = teamMembers.filter(
+          (item) => item.aadObjectId === context.activity.from.aadObjectId
+        )[0].email;
         const data: {
           from: string;
           title: string;
@@ -432,7 +446,7 @@ export class TeamsBot extends TeamsActivityHandler {
           // remaining approvers
           approvers: string[];
           // already approved approvers
-          approverComments: {email: string, comment: string}[];
+          approverComments: { email: string; comment: string }[];
           // current approver comment
           comment: string;
         } = invokeValue.action.data as any;
@@ -449,9 +463,13 @@ export class TeamsBot extends TeamsActivityHandler {
             ],
           };
           adaptiveCard =
-            AdaptiveCardHelper.createBotUserSpecificViewCardApprovalApproved(cardData);
+            AdaptiveCardHelper.createBotUserSpecificViewCardApprovalApproved(
+              cardData
+            );
         } else {
-          const newApprovers = data.approvers.filter((approver) => approver != sender);
+          const newApprovers = data.approvers.filter(
+            (approver) => approver != sender
+          );
           // Only approver and sender should refresh
           const teamMembers = await getTeamMembers(context);
           const refreshUserIds: string[] = teamMembers
@@ -464,47 +482,122 @@ export class TeamsBot extends TeamsActivityHandler {
           const newData = {
             ...deepClone(data),
             // remove sender from approver list and add to approverComments list
-            approverComments: [...data.approverComments, {email: sender, comment: data.comment}],
+            approverComments: [
+              ...data.approverComments,
+              { email: sender, comment: data.comment },
+            ],
             approvers: newApprovers,
             userIds: refreshUserIds,
           };
-          adaptiveCard = CardFactory.adaptiveCard(
+          adaptiveCard =
             AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForApprover(
               newData
-            )
-          );
+            );
         }
-        const cardAttachment = MessageFactory.attachment(adaptiveCard);
-        cardAttachment.id = context.activity.replyToId;
-        // See https://docs.microsoft.com/en-us/microsoftteams/platform/bots/how-to/update-and-delete-bot-messages?tabs=typescript#update-cards
-        await context.updateActivity(cardAttachment);
-        // NOTE: also need to return the exact card otherwise refresh will fail
-        return CardResponseHelpers.toBotInvokeResponse(cardAttachment);
+        return this.refreshAllCards(context, adaptiveCard);
       } else if (verb === "reject") {
         const teamMembers = await getTeamMembers(context);
-        const sender = teamMembers.filter((item) => item.aadObjectId === context.activity.from.aadObjectId)[0].email;
+        const sender = teamMembers.filter(
+          (item) => item.aadObjectId === context.activity.from.aadObjectId
+        )[0].email;
         const adaptiveCard =
-          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalRejected(
-            {
-              ...invokeValue.action.data,
-              rejectedBy: sender,
-            } as any
-          );
-        const cardAttachment = MessageFactory.attachment(adaptiveCard);
-        cardAttachment.id = context.activity.replyToId;
-        // See https://docs.microsoft.com/en-us/microsoftteams/platform/bots/how-to/update-and-delete-bot-messages?tabs=typescript#update-cards
-        await context.updateActivity(cardAttachment);
-        // NOTE: also need to return the exact card otherwise refresh will fail
-        return CardResponseHelpers.toBotInvokeResponse(cardAttachment);
+          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalRejected({
+            ...invokeValue.action.data,
+            rejectedBy: sender,
+          } as any);
+          return await this.refreshAllCards(context, adaptiveCard);
       } else if (verb === "refresh") {
         const adaptiveCard =
-          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForApprover(invokeValue.action.data as any);
-        return CardResponseHelpers.toBotInvokeResponse(adaptiveCard);
+          AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForApprover(
+            invokeValue.action.data as any
+          );
+        return CardResponseHelpers.toBotInvokeRefreshResponse(adaptiveCard);
       } else {
         throw new Error("Approver card: Unknown verb " + verb);
+      }
+    } else if (cardId === CardID.BotSearchCard) {
+      // Developers can query data here and get results
+      const results = [
+        { id: "1", name: "Part 1", description: "Description of part 1" },
+        { id: "2", name: "Part 2", description: "Description of part 2" },
+        { id: "3", name: "Part 3", description: "Description of part 3" },
+      ];
+
+      const card = AdaptiveCardHelper.createBotSearchResultsCard({ results });
+      if (invokeValue.action.data.searchResult === "refresh") {
+        return CardResponseHelpers.toBotInvokeRefreshResponse(card);
+      } else {
+        await context.sendActivity(MessageFactory.attachment(CardFactory.adaptiveCard(card)));
+        return CardResponseHelpers.toBotInvokeMessageResponse("Your query request was sent.");
+      }
+    } else if (cardId === CardID.BotSearchResultsCard) {
+      // Developer can query single data with ID
+      const itemId = invokeValue.action.data.id as string;
+      const cardData = {
+        id: itemId,
+        name: "Part " + itemId,
+        description: "Description of part " + itemId,
+      };
+
+      const card = AdaptiveCardHelper.createBotSearchResultCard(cardData);
+      return CardResponseHelpers.toBotInvokeRefreshResponse(card);
+      // return CardResponseHelpers.toEmptyBotInvokeResponse();
+    } else if (cardId === CardID.BotSearchResultCard) {
+      if (verb === "procurementRequest") {
+        const teamMembers = await getTeamMembers(context);
+
+        // Developers can pre-fill some workflow fields based on the search result:
+        const approvers = teamMembers.map((member) => member.email).filter((email) => email?.startsWith("alex2"));
+        const title = "Procurement request approval";
+        const description = `Asset ID: ${invokeValue.action.data.id}`;
+
+        const card = await this.buildApprovalBaseCard(context, title, description, approvers);
+
+        return this.refreshAllCards(context, card);
+      } else {
+        throw new Error("unknown verb '" + verb + "'");
       }
     } else {
       throw new Error("Unknown card " + cardId);
     }
   }
+
+  // Helper function to replace current card with a new adaptive card, for all users.
+  private async refreshAllCards(context: TurnContext, adaptiveCard: Record<string, unknown>) {
+    const cardAttachment = MessageFactory.attachment(CardFactory.adaptiveCard(adaptiveCard));
+    cardAttachment.id = context.activity.replyToId;
+    // See https://docs.microsoft.com/en-us/microsoftteams/platform/bots/how-to/update-and-delete-bot-messages?tabs=typescript#update-cards
+    await context.updateActivity(cardAttachment);
+    // NOTE: also need to return the exact card otherwise refresh will fail
+    return CardResponseHelpers.toBotInvokeRefreshResponse(cardAttachment);
+  }
+
+  // helper method to build the base card from scratch
+  private async buildApprovalBaseCard(context: TurnContext, title: string, description: string, approvers: string[]) {
+    const teamMembers = await getTeamMembers(context);
+
+    // construct workflow
+    const refreshUserIds: string[] = teamMembers
+      .filter(
+        (item) =>
+          approvers.indexOf(item.email) !== -1 ||
+          item.aadObjectId === context.activity.from.aadObjectId
+      )
+      .map((item) => item.id);
+
+    // sender must be in the team
+    const sender = teamMembers.filter(
+      (item) => item.aadObjectId === context.activity.from.aadObjectId
+    )[0].email;
+    const card = AdaptiveCardHelper.createBotUserSpecificViewCardApprovalBase({
+      from: sender,
+      title: title,
+      description: description,
+      approvers: approvers,
+      approverComments: [],
+      userIds: refreshUserIds,
+    });
+    return card;
+  }
+
 }
