@@ -430,20 +430,7 @@ export class AdaptiveCardHelper {
             approvers: data.approvers,
             approverComments: data.approverComments,
           },
-        },
-        {
-          type: "Action.Execute",
-          verb: "refresh",
-          title: "Refresh (Debug)",
-          data: {
-            cardId: "approvalForSender",
-            from: "${from}",
-            title: "${title}",
-            description: "${description}",
-            approvers: data.approvers,
-            approverComments: data.approverComments,
-          },
-        },
+        }
       ],
       body: [
         {
@@ -552,20 +539,7 @@ export class AdaptiveCardHelper {
             approvers: data.approvers,
             approverComments: data.approverComments,
           },
-        },
-        {
-          type: "Action.Execute",
-          verb: "refresh",
-          title: "Refresh (Debug)",
-          data: {
-            cardId: "approvalForApprover",
-            from: "${from}",
-            title: "${title}",
-            description: "${description}",
-            approvers: data.approvers,
-            approverComments: data.approverComments,
-          },
-        },
+        }
       ],
       body: [
         {
@@ -801,4 +775,5 @@ export class AdaptiveCardHelper {
       cardId: CardID.BotSearchResultCard,
     });
   }
+
 }

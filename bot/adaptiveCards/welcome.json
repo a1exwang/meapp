@@ -5,24 +5,36 @@
       "type": "TextBlock",
       "size": "Medium",
       "weight": "Bolder",
-      "text": "Your Hello World Bot is Running"
+      "text": "Your workflow bot app is added."
     },
     {
       "type": "TextBlock",
-      "text": "Congratulations! Your hello world bot is running. Click the documentation below to learn more about Bots and the Teams Toolkit.",
+      "text": "You can run commands in \"Select or type a command\" or starts from message extension by clicking the app icon in compose area.",
       "wrap": true
     }
   ],
   "actions": [
     {
-      "type": "Action.OpenUrl",
-      "title": "Bot Framework Docs",
-      "url": "https://docs.microsoft.com/en-us/azure/bot-service/?view=azure-bot-service-4.0"
+      "type": "Action.Submit",
+      "title": "Find parts (messageBack)",
+      "data": {
+        "msteams": {
+          "type": "messageBack",
+          "displayText": "Click to find parts",
+          "text": "find parts",
+          "value": "{}"
+        }
+      }
     },
     {
-      "type": "Action.OpenUrl",
-      "title": "Teams Toolkit Docs",
-      "url": "https://aka.ms/teamsfx-docs"
+      "type": "Action.Submit",
+      "title": "Find parts (imBack)",
+      "data": {
+        "msteams": {
+          "type": "imBack",
+          "value": "find parts"
+        }
+      }
     }
   ],
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
