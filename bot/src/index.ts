@@ -7,6 +7,7 @@ import { BotFrameworkAdapter, ConversationState, MemoryStorage, TurnContext, Use
 
 // This bot's main dialog.
 import { TeamsBot } from "./teamsBot";
+import { workflowMiddleware } from "./sdk/user";
 
 // Create adapter.
 // See https://aka.ms/about-bot-adapter to learn more about adapters.
@@ -37,6 +38,8 @@ const onTurnErrorHandler = async (context: TurnContext, error: Error) => {
 
 // Set the onTurnError for the singleton BotFrameworkAdapter.
 adapter.onTurnError = onTurnErrorHandler;
+
+// adapter.use(workflowMiddleware);
 
 const memoryStorage = new MemoryStorage();
 

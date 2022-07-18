@@ -1,0 +1,43 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Rejected: Approval request from ${from}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Title"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${title}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Description"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${description}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Rejected by"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${rejectedBy}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Comment"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${comment}"
+    }
+  ]
+}

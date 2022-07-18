@@ -1,0 +1,92 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "refresh": {
+    "action": {
+      "type": "Action.Execute",
+      "title": "Refresh",
+      "verb": "refresh",
+      "data": {
+        "cardId": "approvalForSender",
+        "from": "${from}",
+        "title": "${title}",
+        "description": "${description}",
+        "approvers": "${approvers}",
+        "approverComments": "${approverComments}"
+      }
+    },
+    "userIds": "${userIds}"
+  },
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "verb": "update",
+      "title": "Update",
+      "data": {
+        "cardId": "approvalForSender",
+        "from": "${from}",
+        "title": "${title}",
+        "description": "${description}",
+        "approvers": "${approvers}",
+        "approverComments": "${approverComments}"
+      }
+    },
+    {
+      "type": "Action.Execute",
+      "verb": "cancel",
+      "title": "Cancel",
+      "data": {
+        "cardId": "approvalForSender",
+        "from": "${from}",
+        "title": "${title}",
+        "description": "${description}",
+        "approvers": "${approvers}",
+        "approverComments": "${approverComments}"
+      }
+    }
+  ],
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Your approval request:"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Title"
+    },
+    {
+      "id": "title",
+      "type": "Input.Text",
+      "isRequired": true,
+      "errorMessage": "Title is required",
+      "placeholder": "Input your approval request title",
+      "value": "${title}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Description"
+    },
+    {
+      "id": "description",
+      "type": "Input.Text",
+      "isMultiline": true,
+      "placeholder": "Input your approval request description",
+      "value": "${description}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approvers"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        {
+          "$data": "${approvers}",
+          "title": "${$index}",
+          "value": "${$data}"
+        }
+      ]
+    }
+  ]
+}

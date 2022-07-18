@@ -1,0 +1,41 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Approved: Approval request from ${from}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Title"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${title}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Description"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${description}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approved by"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        {
+          "$data": "${approverComments}",
+          "title": "${email}",
+          "value": "${comment}"
+        }
+      ]
+    }
+  ]
+}

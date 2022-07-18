@@ -33,6 +33,8 @@ interface WorkflowInfo {
 
 interface UserProfile {}
 
+export let WorkflowSDKEnabled = false;
+
 export class TeamsBot extends TeamsActivityHandler {
   private static readonly ConverstationStateWorkflowInfo = "workflowInfo";
   private static readonly UserStateProfile = "userProfile";
@@ -88,6 +90,24 @@ export class TeamsBot extends TeamsActivityHandler {
               })
             ),
           ],
+        });
+      } else if (txt.match(/approval/i)) {
+        const teamMembers = await getTeamMembers(context);
+        // TODO: handle title/description/members in command bot/workflow
+        // currently hardcode
+
+        // Developers can pre-fill some workflow fields based on the search result:
+        // hard code to assign all other people in the team as approver
+        const approvers = teamMembers
+          .filter(
+            (member) => member.aadObjectId !== context.activity.from.aadObjectId
+          )
+          .map((item) => item.email);
+        const title = "Example request approval";
+        const description = "TODO: support composing approval title/description/approver in adaptive card.";
+        const card = await this.buildApprovalBaseCard(context, title, description, approvers);
+        await context.sendActivity({
+          attachments: [CardFactory.adaptiveCard(card)],
         });
       }
 
@@ -393,13 +413,13 @@ export class TeamsBot extends TeamsActivityHandler {
           // TODO: fix type
           card =
             AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForSender(
-              invokeValue.action.data as any
+              cardData as any
             );
         } else {
           // for approver
           card =
             AdaptiveCardHelper.createBotUserSpecificViewCardApprovalForApprover(
-              invokeValue.action.data as any
+              cardData as any
             );
         }
         return CardResponseHelpers.toBotInvokeRefreshResponse(card);
@@ -433,8 +453,11 @@ export class TeamsBot extends TeamsActivityHandler {
       } else {
         throw new Error("Sender card: Unknown verb " + verb);
       }
-    } else if (cardId === "approvalForApprover") {
+    } else if (cardId === CardID.ApprovalForApprover) {
       if (verb === "approve") {
+        // if (WorkflowSDKEnabled) {
+        //   return await this.workflow.dispatchAdaptiveCardInvoke(context, invokeValue);
+        // }
         const teamMembers = await getTeamMembers(context);
         const sender = teamMembers.filter(
           (item) => item.aadObjectId === context.activity.from.aadObjectId
@@ -547,7 +570,11 @@ export class TeamsBot extends TeamsActivityHandler {
         const teamMembers = await getTeamMembers(context);
 
         // Developers can pre-fill some workflow fields based on the search result:
-        const approvers = teamMembers.map((member) => member.email).filter((email) => email?.startsWith("alex2"));
+        const approvers = teamMembers
+          .filter(
+            (member) => member.aadObjectId !== context.activity.from.aadObjectId
+          )
+          .map((item) => item.email);
         const title = "Procurement request approval";
         const description = `Asset ID: ${invokeValue.action.data.id}`;
 

@@ -1,0 +1,96 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.4",
+  "type": "AdaptiveCard",
+  "refresh": {
+    "action": {
+      "type": "Action.Execute",
+      "title": "Refresh",
+      "verb": "refresh",
+      "data": {
+        "cardId": "approvalForApprover",
+        "from": "${from}",
+        "title": "${title}",
+        "description": "${description}",
+        "approvers": "${approvers}",
+        "approverComments": "${approverComments}"
+      }
+    },
+    "userIds": "${userIds}"
+  },
+  "actions": [
+    {
+      "type": "Action.Execute",
+      "verb": "approve",
+      "title": "Approve",
+      "data": {
+        "cardId": "approvalForApprover",
+        "from": "${from}",
+        "title": "${title}",
+        "description": "${description}",
+        "approvers": "${approvers}",
+        "approverComments": "${approverComments}"
+      }
+    },
+    {
+      "type": "Action.Execute",
+      "verb": "reject",
+      "title": "Reject",
+      "data": {
+        "cardId": "approvalForApprover",
+        "from": "${from}",
+        "title": "${title}",
+        "description": "${description}",
+        "approvers": "${approvers}",
+        "approverComments": "${approverComments}"
+      }
+    }
+  ],
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Approval request from ${from}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Title"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${title}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Description"
+    },
+    {
+      "type": "TextBlock",
+      "text": "${description}"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approvers"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        {
+          "$data": "${approvers}",
+          "title": "${$index}",
+          "value": "${$data}"
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "Comment (*)"
+    },
+    {
+      "id": "comment",
+      "type": "Input.Text",
+      "isMultiline": true,
+      "isRequired": true,
+      "placeholder": "Input comment"
+    }
+  ]
+}
