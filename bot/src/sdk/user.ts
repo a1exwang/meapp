@@ -2,7 +2,19 @@ import { AdaptiveCards } from "@microsoft/adaptivecards-tools";
 import { TurnContext } from "botbuilder";
 import { AdaptiveCardHelper, CardID } from "../adaptiveCardHelper";
 import { deepClone, getTeamMembers } from "../utils";
-import { ApprovalApproverApproveInput, ApprovalApproverApproveOutput, ApprovalVerb, Workflow, WorkflowMiddleware, WorkflowStep, WorkflowStepData, WorkflowStepOutput, WorkflowStepResponseType as WorkflowResponseType } from "./sdk";
+import {
+  ApprovalInput as ApprovalInput,
+  ApprovalOutput as ApprovalOutput,
+  ApprovalVerb,
+  Workflow,
+  WorkflowMiddleware,
+  WorkflowStep,
+  WorkflowStepData,
+  WorkflowStepOutput,
+  WorkflowStepResponseType as WorkflowResponseType,
+} from "./sdk";
+import approvalForApproverTemplate from "../../adaptiveCards/approval/approvalForApprover.json";
+import approvalForSenderTemplate from "../../adaptiveCards/approval/approvalForSender.json";
 
 // class WorkflowStepSender extends WorkflowStep {
 //   readonly cards = {
@@ -85,14 +97,28 @@ export const workflowMiddleware = new WorkflowMiddleware([
 ]);
 
 class WorkflowStepApprover extends WorkflowStep {
+  constructor() {
+    super();
 
-  async handleWorkflow(
+    this.cards = {
+      [CardID.ApprovalForApprover]: approvalForApproverTemplate,
+      [CardID.ApprovalForSender]: approvalForSenderTemplate,
+    };
+    this.actions = {
+      [CardID.ApprovalBase]: {
+        [ApprovalVerb.Approve]: this.handleApprove.bind(this),
+      },
+    };
+  }
+
+  async handleApprove(
     context: TurnContext,
-    data: WorkflowStepData<ApprovalApproverApproveInput, ApprovalVerb>
-  ): Promise<WorkflowStepOutput<ApprovalApproverApproveOutput>> {
+    data: WorkflowStepData<ApprovalInput, ApprovalVerb>
+  ): Promise<WorkflowStepOutput<ApprovalOutput>> {
+    const output: ApprovalOutput = deepClone(data.customData);
 
-    const result: ApprovalApproverApproveOutput = deepClone(data.customData);
-    result.approverComments = [
+    /// Bussiness logic
+    output.approverComments = [
       ...data.customData.approverComments,
       { email: data.sender.email, comment: data.customData.comment },
     ];
@@ -102,7 +128,7 @@ class WorkflowStepApprover extends WorkflowStep {
       return {
         cardId: CardID.ApprovalForApprover,
         responseType: { type: WorkflowResponseType.Refresh },
-        result,
+        data: output,
       };
     } else {
       // Otherwise, remove this approver from approver list.
@@ -117,28 +143,15 @@ class WorkflowStepApprover extends WorkflowStep {
             item.aadObjectId === context.activity.from.aadObjectId
         )
         .map((item) => item.id);
-      result.approvers = newApprovers;
+      output.approvers = newApprovers;
+
+      // build a model and send to views (adaptive card renderer)
       return {
         cardId: CardID.ApprovalBase,
         responseType: { type: WorkflowResponseType.Refresh },
-        result: result,
+        data: output,
         refreshUserIds: refreshUserIds,
       };
     }
-  }
-
-  async renderAdaptiveCard(
-    context: TurnContext,
-    outputData: WorkflowStepOutput<ApprovalApproverApproveOutput>
-  ) {
-    const template = await this.buildAdaptiveCardTemplate(
-      outputData.cardId,
-      outputData
-    );
-    const cardData = await this.buildAdaptiveCardData(
-      outputData.cardId,
-      outputData
-    );
-    return AdaptiveCards.declare(template).render(cardData);
   }
 }

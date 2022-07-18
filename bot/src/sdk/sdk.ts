@@ -12,7 +12,7 @@ import { deepClone, getTeamMembers } from "../utils";
 
 type ActionHandler = () => Promise<WorkflowStep>;
 
-export interface ApprovalApproverApproveInput {
+export interface ApprovalInput {
   from: string;
   title: string;
   description: string;
@@ -24,7 +24,7 @@ export interface ApprovalApproverApproveInput {
   comment: string;
 }
 
-export interface ApprovalApproverApproveOutput {
+export interface ApprovalOutput {
   from: string;
   title: string;
   description: string;
@@ -59,14 +59,14 @@ export type WorkflowStepResponsePayload =
 export interface WorkflowStepOutput<T> {
   cardId: string;
   responseType: WorkflowStepResponsePayload;
-  result: T;
+  data: T;
   refreshUserIds?: string[];
 }
 
 export type WorkflowActionHandler = (
   context: TurnContext,
-  input: WorkflowStepData<ApprovalApproverApproveInput, ApprovalVerb>
-) => Promise<WorkflowStepOutput<ApprovalApproverApproveOutput>>;
+  input: WorkflowStepData<ApprovalInput, ApprovalVerb>
+) => Promise<WorkflowStepOutput<ApprovalOutput>>;
 
 export abstract class WorkflowStep {
   // actionHandlers: {[cardId: string]}
@@ -81,6 +81,19 @@ export abstract class WorkflowStep {
     // };
   }
 
+  actions: {
+    [cardId: string]: {
+      [verb: string]: (
+        context: TurnContext,
+        data: WorkflowStepData<ApprovalInput, ApprovalVerb>
+      ) => Promise<WorkflowStepOutput<ApprovalOutput>>;
+    };
+  };
+
+  cards: {
+    [cardId: string]: Record<string, unknown>,
+  }
+
   async dispatchAdaptiveCardInvoke(
     context: TurnContext,
     invokeValue: AdaptiveCardInvokeValue
@@ -92,14 +105,14 @@ export abstract class WorkflowStep {
 
     const verb = invokeValue.action.verb as ApprovalVerb;
     const inputData: WorkflowStepData<
-      ApprovalApproverApproveInput,
+      ApprovalInput,
       ApprovalVerb
     > = {
       cardId: invokeValue.action.data.cardId as string,
       verb: verb,
       role: await this.getSenderRole(context),
       customData: invokeValue.action
-        .data as any as ApprovalApproverApproveInput,
+        .data as any as ApprovalInput,
       sender: sender,
     };
 
@@ -119,21 +132,6 @@ export abstract class WorkflowStep {
     }
   }
 
-  async renderAdaptiveCard(
-    context: TurnContext,
-    outputData: WorkflowStepOutput<ApprovalApproverApproveOutput>
-  ) {
-    const template = await this.buildAdaptiveCardTemplate(
-      outputData.cardId,
-      outputData
-    );
-    const cardData = await this.buildAdaptiveCardData(
-      outputData.cardId,
-      outputData
-    );
-    return AdaptiveCards.declare(template).render(cardData);
-  }
-
   async getSenderRole(context: TurnContext): Promise<string> {
     return "unknown";
   }
@@ -141,16 +139,16 @@ export abstract class WorkflowStep {
   // default implem
   async buildAdaptiveCardTemplate(
     cardId: string,
-    result: WorkflowStepOutput<ApprovalApproverApproveOutput>
+    result: WorkflowStepOutput<ApprovalOutput>
   ): Promise<unknown> {
     const cards = {
       [CardID.ApprovalForApprover]:
         AdaptiveCardHelper.createBotUserSpecificViewCardApprovalApproved(
-          result.result
+          result.data
         ),
       [CardID.ApprovalBase]:
         AdaptiveCardHelper.createBotUserSpecificViewCardApprovalApproved(
-          result.result
+          result.data
         ),
     };
 
@@ -159,9 +157,9 @@ export abstract class WorkflowStep {
 
   async buildAdaptiveCardData(
     cardId: string,
-    result: WorkflowStepOutput<ApprovalApproverApproveOutput>
+    result: WorkflowStepOutput<ApprovalOutput>
   ) {
-    return result.result;
+    return result.data;
   }
 
   async isMatch(
@@ -171,10 +169,29 @@ export abstract class WorkflowStep {
     return true;
   }
 
-  abstract handleWorkflow(
+  async handleWorkflow(
     context: TurnContext,
-    data: WorkflowStepData<ApprovalApproverApproveInput, ApprovalVerb>
-  ): Promise<WorkflowStepOutput<ApprovalApproverApproveOutput>>;
+    data: WorkflowStepData<ApprovalInput, ApprovalVerb>
+  ): Promise<WorkflowStepOutput<ApprovalOutput>> {
+    const action = this.actions[data.cardId]?.[data.verb];
+    if (!action) {
+      throw new Error(`Action and verb not found ${data.cardId}, ${data.verb}`);
+    }
+
+    return await action(context, data);
+  }
+
+  async renderAdaptiveCard(
+    context: TurnContext,
+    outputData: WorkflowStepOutput<ApprovalOutput>
+  ) {
+    if (!(outputData.cardId in this.cards)) {
+      throw new Error("Card not found " + outputData.cardId);
+    }
+    return AdaptiveCards.declare(this.cards[outputData.cardId]).render(
+      outputData.data
+    );
+  }
 }
 
 export class Workflow {
